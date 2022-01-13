@@ -1,3 +1,3 @@
-import NimEcs/[ecs_world]
+import NimEcs/[ecsworld]
 
-export ecs_world
+export ecsworld

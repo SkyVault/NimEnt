@@ -12,12 +12,9 @@ proc add* [T](self: CompBuffer, comp: T): int {.discardable.} =
   const size = sizeof(T)
   let arr = cast[array[size, byte]](comp)
 
-  if len(self.buff) == 0:
-    self.buff.setLen(size * 32)
-
   let start = size * self.total
   for i in 0..<len(arr):
-    self.buff[start + i] = arr[i]
+    self.buff.add(arr[i])
 
   result = self.total
   self.total += 1
