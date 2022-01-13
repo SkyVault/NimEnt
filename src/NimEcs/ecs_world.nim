@@ -1,42 +1,9 @@
 import typetraits
 import std/hashes
 import tables
+import compbuff
 
 const MAX_COMPONENTS = 256
-
-type CompBuffer* = ref object
-  buff: seq[byte]
-  total: int
-
-proc newCompBuffer* (): CompBuffer =
-  result = CompBuffer(
-    buff: @[],
-    total: 0,
-  )
-
-proc add[T](self: CompBuffer, comp: T): int {.discardable.} =
-  const size = sizeof(T)
-  let arr = cast[array[size, byte]](comp)
-
-  if len(self.buff) == 0:
-    self.buff.setLen(size * 32)
-
-  let start = size * self.total
-  for i in 0..<len(arr):
-    self.buff[start + i] = arr[i]
-
-  result = self.total
-  self.total += 1
-
-proc get[T](self: CompBuffer, index: int): T =
-  const size = sizeof(T)
-  let start = size * index
-
-  var arr: array[size, byte]
-  for i in 0..<len(arr):
-    arr[i] = self.buff[start + i]
-
-  return cast[T](arr)
 
 type 
   EntState* {.pure.} = enum
@@ -86,7 +53,7 @@ proc add* [T](world: World, id: EntId, thing: T) =
   let index = compBuff.add(thing)
   world.entities[id].indexes[typeIndex] = index
   
-proc get* [T](world: World, id: EntId): T =
+proc get* [T](world: World, id: EntId): ptr T =
   let componentName = name(type(T))
   let typeIndex = world.getTypeIndex(componentName)
   let compBuff = world.components[typeIndex]
