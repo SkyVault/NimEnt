@@ -61,7 +61,7 @@ proc get* [T](world: World, id: EntId): ptr T =
   let typeIndex = world.getTypeIndex(componentName)
   let compBuff = world.components[typeIndex]
   let index = world.entities[id].indexes[typeIndex]
-  return get[T](compBuff, index)
+  result = get[T](compBuff, index)
 
 template has* (world: World, id: EntId, T: untyped): bool =
   let componentName = name(type(T))
