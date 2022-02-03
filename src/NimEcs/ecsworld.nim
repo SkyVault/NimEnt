@@ -40,7 +40,7 @@ proc spawn* (self: World): EntId =
   fill(ent.indexes, -1)
   self.entities.add(ent)
 
-proc getTypeIndex(world: World, name: string): int =
+proc getTypeIndex* (world: World, name: string): int =
   result = 
     if world.tableTypeMap.hasKey(name):
       world.tableTypeMap[name]
@@ -63,33 +63,36 @@ proc get* [T](world: World, id: EntId): ptr T =
   let index = world.entities[id].indexes[typeIndex]
   return get[T](compBuff, index)
 
-proc has* [T](world: World, id: EntId): bool =
+template has* (world: World, id: EntId, T: untyped): bool =
   let componentName = name(type(T))
   let typeIndex = world.getTypeIndex(componentName)
-  result = world.entities[id].indexes[typeIndex] >= 0
-  
+  world.entities[id].indexes[typeIndex] >= 0
+
+template has* (world: World, id: EntId, A, B: untyped): bool =
+  has(world, id, A) and has(world, id, B)
+
+template has* (world: World, id: EntId, A, B, C: untyped): bool =
+  has(world, id, A, B) and has(world, id, C)
+
+template has* (world: World, id: EntId, A, B, C, D: untyped): bool =
+  has(world, id, A, B) and has(world, id, C, D)
+ 
 template eachEntityWith* (world: World, T: untyped, body: untyped) =
   for ent in world.entities:
-    if not has[T](world, ent.id): continue
+    if not has(world, ent.id, T): continue
     body
   
 template eachEntityWith* (world: World, A, B: untyped, body: untyped) =
   for ent in world.entities:
-    if not has[A](world, ent.id): continue
-    if not has[B](world, ent.id): continue
+    if not has(world, ent.id, A, B): continue
     body
   
 template eachEntityWith* (world: World, A, B, C: untyped, body: untyped) =
   for ent in world.entities:
-    if not has[A](world, ent.id): continue
-    if not has[B](world, ent.id): continue
-    if not has[C](world, ent.id): continue
+    if not has(world, ent.id, A, B, C): continue
     body
 
 template eachEntityWith* (world: World, A, B, C, D: untyped, body: untyped) =
   for ent in world.entities:
-    if not has[A](world, ent.id): continue
-    if not has[B](world, ent.id): continue
-    if not has[C](world, ent.id): continue
-    if not has[D](world, ent.id): continue
+    if not has(world, ent.id, A, B, C, D): continue
     body

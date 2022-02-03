@@ -8,6 +8,8 @@ type Spatial = object
   
 type Timer = object
     time: float
+  
+type Groups = object
 
 test "can add":
   let world = initEcsWorld()
@@ -16,6 +18,6 @@ test "can add":
     let ent = world.spawn()
     world.add(ent, Timer(time: 1024.32))
     world.add(ent, Spatial(x: 0.0, y: 0.0))
+    world.add(ent, Groups())
 
-  eachEntityWith(world, Spatial, Timer):
-    echo "HERE?"
+  echo has(world, 0, Timer, Spatial, Groups)
