@@ -23,6 +23,7 @@ type
   World = object
     entities: seq[Ent]
     components: array[MaxComponentTypes, CompBuffer]
+    updates: seq[proc(entId: EntId): void]
     tableTypeMap: Table[string, int]
 
 type WorldRef* = ref World
@@ -30,7 +31,8 @@ type WorldRef* = ref World
 proc initEcsWorld* (): World =
   result = World(
     entities: @[],
-    tableTypeMap: initTable[string, int]()
+    updates: @[],
+    tableTypeMap: initTable[string, int](),
   )
   for c in 0..<MaxComponentTypes:
     result.components[c] = newCompBuffer()
@@ -38,6 +40,7 @@ proc initEcsWorld* (): World =
 proc newEcsWorld* (): WorldRef =
   result = WorldRef(
     entities: @[],
+    updates: @[],
     tableTypeMap: initTable[string, int]()
   )
   for c in 0..<MaxComponentTypes:
@@ -60,6 +63,9 @@ proc getTypeIndex* (world: var World, name: string): int =
       let n = len(world.tableTypeMap)
       world.tableTypeMap[name] = n 
       n
+
+proc onUpdate* (world: var World, fn: proc(entId: EntId): void) =
+  world.updates.add(fn)
 
 proc add* [T](world: var World, id: EntId, component: T) =
   let componentName = name(type(T))
@@ -149,13 +155,53 @@ template eachWith* (world: var World, a, b, c, d: typedesc, fn: untyped) =
     if valid:
       fn(ent.id, get[a](world, ent.id)[], get[b](world, ent.id)[], get[c](world, ent.id)[], get[c](world, ent.id)[])
 
-macro lenVarargs*(a: varargs[untyped]): untyped = newLit len(a)
+macro openArrayLen*(a: openArray[untyped]): untyped = newLit len(a)
 
-macro view* (w: World, xs: varargs[untyped]): seq[EntId] =
-  result = quote do:
-    var res = newSeq[EntId]()
-    for e in `w`.entities:
-      for i in 0..<lenVarargs(xs):
-        if `w`.has(e.id, `xs[i]`):
-          res.add(e.id)
-    res
+macro view* (w: var World, xs: openArray[untyped], body: untyped) =
+  var ns = newSeq[NimNode]()
+
+  for x in xs:
+    ns.add(
+      nnkIfStmt.newTree(
+        nnkElifBranch.newTree(
+          nnkPrefix.newTree(
+            newIdentNode("not"),
+            nnkCall.newTree(
+              nnkDotExpr.newTree(newIdentNode("world"), newIdentNode("has")),
+              newIdentNode("entId"),
+              newIdentNode($x)
+            )
+          ),
+          nnkStmtList.newTree(
+            nnkReturnStmt.newTree(newEmptyNode()))
+        ),
+      )
+    )
+
+  nnkStmtList.newTree(
+    nnkCall.newTree(
+      newIdentNode("onUpdate"), newIdentNode("world"), 
+      nnkDo.newTree(
+        newEmptyNode(), newEmptyNode(), newEmptyNode(),
+        nnkFormalParams.newTree(
+          newEmptyNode(),
+          nnkIdentDefs.newTree(newIdentNode("entId"), newIdentNode("EntId"), newEmptyNode())
+        ),
+        newEmptyNode(), newEmptyNode(),
+        nnkStmtList.newTree(
+          nnkStmtList.newTree(
+            ns
+          ),
+          body
+        ),
+      )
+    )
+  ) 
+
+
+proc update* (world: var World) =
+  for e in world.entities:
+    for up in world.updates:
+      up(e.id)
+
+  world.updates.setLen(0)
