@@ -1,7 +1,4 @@
-import typetraits
-import tables
-import compbuff
-import arrayutils
+import typetraits, tables, compbuff, arrayutils, sets
 
 const MaxComponentTypes = 512
 
@@ -19,10 +16,14 @@ type
     indexes: array[MaxComponentTypes, int]
     state: EntState
 
-type World = object
-  entities: seq[Ent]
-  components: array[MaxComponentTypes, CompBuffer]
-  tableTypeMap: Table[string, int]
+type 
+  View = object
+    keys: HashSet[int] # type indexes
+
+  World = object
+    entities: seq[Ent]
+    components: array[MaxComponentTypes, CompBuffer]
+    tableTypeMap: Table[string, int]
 
 type WorldRef* = ref World
 
@@ -60,14 +61,14 @@ proc getTypeIndex* (world: var World, name: string): int =
       world.tableTypeMap[name] = n 
       n
 
-proc add* [T](world: var World, id: EntId, thing: T) =
+proc add* [T](world: var World, id: EntId, component: T) =
   let componentName = name(type(T))
   let typeIndex = world.getTypeIndex(componentName)
   let compBuff = world.components[typeIndex]
-  let index = compBuff.add(thing)
+  let index = compBuff.add(component)
   world.entities[id].indexes[typeIndex] = index
   
-proc get* [T](world: World, id: EntId): ptr T =
+proc get* [T](world: var World, id: EntId): ptr T =
   let componentName = name(type(T))
   let typeIndex = world.getTypeIndex(componentName)
   let compBuff = world.components[typeIndex]
@@ -88,22 +89,38 @@ template has* (world: World, id: EntId, A, B, C: untyped): bool =
 template has* (world: World, id: EntId, A, B, C, D: untyped): bool =
   has(world, id, A, B) and has(world, id, C, D)
  
-template eachEntityWith* (world: World, T: untyped, body: untyped) =
+template eachWith* (world: var World, a: typedesc, fn: untyped) =
   for ent in world.entities:
-    if not has(world, ent.id, T): continue
-    body
-  
-template eachEntityWith* (world: World, A, B: untyped, body: untyped) =
-  for ent in world.entities:
-    if not has(world, ent.id, A, B): continue
-    body
-  
-template eachEntityWith* (world: World, A, B, C: untyped, body: untyped) =
-  for ent in world.entities:
-    if not has(world, ent.id, A, B, C): continue
-    body
+    var valid = true
+    if not world.has(ent.id, a):
+      valid = false
+      break
+    if valid:
+      fn(ent.id, get[a](world, ent.id)[])
 
-template eachEntityWith* (world: World, A, B, C, D: untyped, body: untyped) =
+template eachWith* (world: var World, a, b: typedesc, fn: untyped) =
   for ent in world.entities:
-    if not has(world, ent.id, A, B, C, D): continue
-    body
+    var valid = true
+    if not world.has(ent.id, a, b):
+      valid = false
+      break
+    if valid:
+      fn(ent.id, get[a](world, ent.id)[], get[b](world, ent.id)[])
+
+template eachWith* (world: var World, a, b, c: typedesc, fn: untyped) =
+  for ent in world.entities:
+    var valid = true
+    if not world.has(ent.id, a, b, c):
+      valid = false
+      break
+    if valid:
+      fn(ent.id, get[a](world, ent.id)[], get[b](world, ent.id)[], get[c](world, ent.id)[])
+
+template eachWith* (world: var World, a, b, c, d: typedesc, fn: untyped) =
+  for ent in world.entities:
+    var valid = true
+    if not world.has(ent.id, a, b, c, d):
+      valid = false
+      break
+    if valid:
+      fn(ent.id, get[a](world, ent.id)[], get[b](world, ent.id)[], get[c](world, ent.id)[], get[c](world, ent.id)[])
