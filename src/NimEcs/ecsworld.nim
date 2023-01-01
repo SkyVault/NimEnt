@@ -1,4 +1,4 @@
-import typetraits, tables, compbuff, arrayutils, sets
+import typetraits, tables, compbuff, arrayutils, sets, macros
 
 const MaxComponentTypes = 512
 
@@ -89,6 +89,30 @@ template has* (world: World, id: EntId, A, B, C: untyped): bool =
 template has* (world: World, id: EntId, A, B, C, D: untyped): bool =
   has(world, id, A, B) and has(world, id, C, D)
  
+proc getView* (world: var World, a: typedesc): seq[EntId] =
+  for ent in world.entities:
+    var valid = true
+    if not world.has(ent.id, a):
+      valid = false
+      break
+    if valid: result.add(ent.id)
+
+proc getView* (world: var World, a, b: typedesc): seq[EntId] =
+  for ent in world.entities:
+    var valid = true
+    if not world.has(ent.id, a) or not world.has(ent.id, b):
+      valid = false
+      break
+    if valid: result.add(ent.id)
+
+proc getView* (world: var World, a, b, c: typedesc): seq[EntId] =
+  for ent in world.entities:
+    var valid = true
+    if not world.has(ent.id, a) or not world.has(ent.id, b) or not world.has(ent.id, c):
+      valid = false
+      break
+    if valid: result.add(ent.id)
+ 
 template eachWith* (world: var World, a: typedesc, fn: untyped) =
   for ent in world.entities:
     var valid = true
@@ -124,3 +148,14 @@ template eachWith* (world: var World, a, b, c, d: typedesc, fn: untyped) =
       break
     if valid:
       fn(ent.id, get[a](world, ent.id)[], get[b](world, ent.id)[], get[c](world, ent.id)[], get[c](world, ent.id)[])
+
+macro lenVarargs*(a: varargs[untyped]): untyped = newLit len(a)
+
+macro view* (w: World, xs: varargs[untyped]): seq[EntId] =
+  result = quote do:
+    var res = newSeq[EntId]()
+    for e in `w`.entities:
+      for i in 0..<lenVarargs(xs):
+        if `w`.has(e.id, `xs[i]`):
+          res.add(e.id)
+    res

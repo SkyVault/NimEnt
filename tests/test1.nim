@@ -1,4 +1,4 @@
-import unittest
+import unittest, macros, sugar
 
 import NimEcs
 
@@ -28,3 +28,5 @@ test "can add":
 
   world.eachWith(Spatial) do (e: EntId, s: Spatial):
     echo e, " ", s.x, " ", s.y
+
+  echo view(world, Spatial, Timer, Groups)
