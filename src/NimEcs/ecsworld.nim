@@ -1,4 +1,4 @@
-import typetraits, tables, compbuff, arrayutils, sets, macros
+import typetraits, tables, compbuff, arrayutils, sets, macros, strutils, future
 
 const MaxComponentTypes = 512
 
@@ -158,10 +158,11 @@ template eachWith* (world: var World, a, b, c, d: typedesc, fn: untyped) =
 macro openArrayLen*(a: openArray[untyped]): untyped = newLit len(a)
 
 macro view* (w: var World, xs: openArray[untyped], body: untyped) =
-  var ns = newSeq[NimNode]()
+  var checks = newSeq[NimNode]()
+  var bindings = newSeq[NimNode]()
 
   for x in xs:
-    ns.add(
+    checks.add(
       nnkIfStmt.newTree(
         nnkElifBranch.newTree(
           nnkPrefix.newTree(
@@ -189,8 +190,16 @@ macro view* (w: var World, xs: openArray[untyped], body: untyped) =
         ),
         newEmptyNode(), newEmptyNode(),
         nnkStmtList.newTree(
+          nnkStmtList.newTree(checks),
+          # nnkStmtList.newTree(bindings),
           nnkStmtList.newTree(
-            ns
+            nnkLetSection.newTree(
+              nnkIdentDefs.newTree(
+                newIdentNode("ent"),
+                newEmptyNode(),
+                newIdentNode("entId")
+              )
+            )
           ),
           body
         ),
@@ -198,6 +207,12 @@ macro view* (w: var World, xs: openArray[untyped], body: untyped) =
     )
   ) 
 
+macro decDumbType(): untyped =
+  echo "=============="
+  echo repr result
+  echo "=============="
+
+decDumbType()
 
 proc update* (world: var World) =
   for e in world.entities:

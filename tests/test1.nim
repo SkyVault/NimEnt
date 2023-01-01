@@ -20,18 +20,12 @@ test "can add":
     world.add(ent, Spatial(x: i.float, y: 0.0))
     world.add(ent, Groups())
 
-  view(world, [Timer, Spatial]) do:
-    echo "HERE"
-
-  view(world, [Timer, Spatial]) do:
-    echo "HERE2"
+  # expandMacros:
+  #   view(world, [Timer, Spatial]) do:
+  #     echo "HERE?", ent
 
   world.update() 
 
-  # expandMacros:
-  #   view(world, [Timer, Spatial]) do:
-  #     echo "HERE: "
-
-  dumpAstGen:
-    if not world.has(entId, Spatial):
-      return
+  # dumpAstGen:
+  #   let entId = 32
+  #   let spatial = world.get[Spatial](entId)
