@@ -1,10 +1,9 @@
 import typetraits
-import std/hashes
 import tables
 import compbuff
 import arrayutils
 
-const MAX_COMPONENTS = 256
+const MaxComponentTypes = 512
 
 type 
   EntState* {.pure.} = enum
@@ -15,23 +14,35 @@ type
   
   Ent* = object
     id: EntId
-    indexes: array[MAX_COMPONENTS, int]
+
+    # TODO: Encode this enformation in a more data efficient way
+    indexes: array[MaxComponentTypes, int]
     state: EntState
 
-type World* = ref object
+type World = object
   entities: seq[Ent]
-  components: array[MAX_COMPONENTS, CompBuffer]
+  components: array[MaxComponentTypes, CompBuffer]
   tableTypeMap: Table[string, int]
+
+type WorldRef* = ref World
 
 proc initEcsWorld* (): World =
   result = World(
     entities: @[],
     tableTypeMap: initTable[string, int]()
   )
-  for c in 0..<MAX_COMPONENTS:
+  for c in 0..<MaxComponentTypes:
     result.components[c] = newCompBuffer()
 
-proc spawn* (self: World): EntId =
+proc newEcsWorld* (): WorldRef =
+  result = WorldRef(
+    entities: @[],
+    tableTypeMap: initTable[string, int]()
+  )
+  for c in 0..<MaxComponentTypes:
+    result.components[c] = newCompBuffer()
+
+proc spawn* (self: var World): EntId =
   result = len(self.entities)
   var ent = Ent(
     id: result,
@@ -40,7 +51,7 @@ proc spawn* (self: World): EntId =
   fill(ent.indexes, -1)
   self.entities.add(ent)
 
-proc getTypeIndex* (world: World, name: string): int =
+proc getTypeIndex* (world: var World, name: string): int =
   result = 
     if world.tableTypeMap.hasKey(name):
       world.tableTypeMap[name]
@@ -49,7 +60,7 @@ proc getTypeIndex* (world: World, name: string): int =
       world.tableTypeMap[name] = n 
       n
 
-proc add* [T](world: World, id: EntId, thing: T) =
+proc add* [T](world: var World, id: EntId, thing: T) =
   let componentName = name(type(T))
   let typeIndex = world.getTypeIndex(componentName)
   let compBuff = world.components[typeIndex]

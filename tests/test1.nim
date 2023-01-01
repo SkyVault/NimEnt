@@ -12,7 +12,7 @@ type Timer = object
 type Groups = object
 
 test "can add":
-  let world = initEcsWorld()
+  var world = initEcsWorld()
 
   for i in 0..5:
     let ent = world.spawn()
